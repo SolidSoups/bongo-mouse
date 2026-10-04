@@ -10,3 +10,5 @@ log.workspace = true
 pollster.workspace = true
 wgpu.workspace = true
 winit.workspace = true
+image.workspace = true
+bytemuck.workspace = true

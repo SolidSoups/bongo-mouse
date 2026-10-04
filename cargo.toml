@@ -9,3 +9,5 @@ log = "0.4"
 pollster = "0.3"
 wgpu = "30.0"
 winit = "0.30"
+image = { version = "0.24", default-features = false, features = ["png"] }
+bytemuck = { version = "1.24", features = ["derive"] }
