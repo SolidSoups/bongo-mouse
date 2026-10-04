@@ -6,7 +6,3 @@ edition = "2024"
 [dependencies]
 anyhow.workspace = true
 engine = { path = "../engine" }
-
-[package.metadata.wgsl-analyzer]
-edition = "2026_pre"
-root = "./src"

@@ -2,33 +2,11 @@ use engine::winit::dpi::LogicalSize;
 use engine::winit::event::{ElementState, MouseButton, WindowEvent};
 use engine::winit::platform::windows::WindowAttributesExtWindows;
 use engine::winit::window::{Window, WindowAttributes, WindowLevel};
-use engine::{Frame, Game, Gpu, Mesh, SpriteVertex, Texture, Vertex, wgpu};
-
-const QUAD_VERTICES: &[SpriteVertex] = &[
-    SpriteVertex {
-        position: [-1.0, 1.0],
-        tex_coords: [0.0, 0.0],
-    },
-    SpriteVertex {
-        position: [-1.0, -1.0],
-        tex_coords: [0.0, 1.0],
-    },
-    SpriteVertex {
-        position: [1.0, -1.0],
-        tex_coords: [1.0, 1.0],
-    },
-    SpriteVertex {
-        position: [1.0, 1.0],
-        tex_coords: [1.0, 0.0],
-    },
-];
-
-const QUAD_INDICES: &[u32] = &[0, 1, 2, 0, 2, 3];
+use engine::{Frame, Game, Gpu, Rect, Sprite, SpritePass, Texture, wgpu};
 
 pub struct Cat {
-    quad: Mesh,
-    pipeline: wgpu::RenderPipeline,
-    bind_group: wgpu::BindGroup,
+    sprites: SpritePass,
+    cat: Sprite,
 }
 
 impl Game for Cat {
@@ -51,94 +29,27 @@ impl Game for Cat {
             "cat",
         )
         .unwrap();
+
         println!(
             "loaded cat texture: {}x{}",
             texture.size.width, texture.size.height
         );
 
-        let quad = Mesh::new(&gpu.device, QUAD_VERTICES, QUAD_INDICES, "quad");
-
-        let bind_group_layout =
-            gpu.device
-                .create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                    label: Some("cat_bind_group_layout"),
-                    entries: &[
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 0,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Texture {
-                                multisampled: false,
-                                view_dimension: wgpu::TextureViewDimension::D2,
-                                sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                            },
-                            count: None,
-                        },
-                        wgpu::BindGroupLayoutEntry {
-                            binding: 1,
-                            visibility: wgpu::ShaderStages::FRAGMENT,
-                            ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                            count: None,
-                        },
-                    ],
-                });
-
-        let bind_group = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("cat_bind_group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&texture.sampler),
-                },
-            ],
-        });
-
-        let pipeline_layout = gpu
-            .device
-            .create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: Some("cat_pipeline_layout"),
-                bind_group_layouts: &[Some(&bind_group_layout)],
-                immediate_size: 0,
-            });
-        let shader = gpu
-            .device
-            .create_shader_module(wgpu::include_wgsl!("sprite.wgsl"));
-        let pipeline = gpu
-            .device
-            .create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some("cat_pipeline"),
-                layout: Some(&pipeline_layout),
-                vertex: wgpu::VertexState {
-                    module: &shader,
-                    entry_point: Some("vs_main"),
-                    buffers: &[Some(SpriteVertex::desc())],
-                    compilation_options: Default::default(),
-                },
-                fragment: Some(wgpu::FragmentState {
-                    module: &shader,
-                    entry_point: Some("fs_main"),
-                    targets: &[Some(wgpu::ColorTargetState {
-                        format: gpu.config.format.add_srgb_suffix(),
-                        blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                        write_mask: wgpu::ColorWrites::ALL,
-                    })],
-                    compilation_options: Default::default(),
-                }),
-                primitive: wgpu::PrimitiveState::default(),
-                depth_stencil: None,
-                multisample: wgpu::MultisampleState::default(),
-                multiview_mask: None,
-                cache: None,
-            });
+        let sprites = SpritePass::new(gpu);
+        let cat = sprites.create_sprite(
+            gpu, 
+            &texture,
+            Rect {
+                x: 0.0,
+                y: 0.0,
+                width: 1.0,
+                height: 1.0,
+            },
+        );
 
         Cat {
-            quad,
-            pipeline,
-            bind_group,
+            sprites,
+            cat
         }
     }
 
@@ -152,7 +63,12 @@ impl Game for Cat {
                     resolve_target: None,
                     depth_slice: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+                        load: wgpu::LoadOp::Clear(wgpu::Color {
+                            r: 0.5,
+                            g: 0.0,
+                            b: 0.0,
+                            a: 0.7,
+                        }),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -162,9 +78,7 @@ impl Game for Cat {
                 multiview_mask: None,
             });
 
-        render_pass.set_pipeline(&self.pipeline);
-        render_pass.set_bind_group(0, &self.bind_group, &[]);
-        self.quad.draw(&mut render_pass);
+        self.sprites.draw(&mut render_pass, &self.cat);
     }
 
     fn window_event(&mut self, window: &Window, event: &WindowEvent) {

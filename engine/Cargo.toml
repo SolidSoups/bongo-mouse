@@ -12,3 +12,7 @@ wgpu.workspace = true
 winit.workspace = true
 image.workspace = true
 bytemuck.workspace = true
+
+[package.metadata.wgsl-analyzer]
+edition = "2026_pre"
+root = "./src"
