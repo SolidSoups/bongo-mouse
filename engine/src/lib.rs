@@ -3,6 +3,7 @@ mod gpu;
 mod texture;
 mod mesh;
 mod sprite;
+pub mod desktop;
 
 pub use app::{Game, run};
 pub use gpu::{Frame, Gpu};

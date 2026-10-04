@@ -1,12 +1,18 @@
+use engine::desktop::{self, CursorSample};
 use engine::winit::dpi::LogicalSize;
 use engine::winit::event::{ElementState, MouseButton, WindowEvent};
 use engine::winit::platform::windows::WindowAttributesExtWindows;
 use engine::winit::window::{Window, WindowAttributes, WindowLevel};
 use engine::{Frame, Game, Gpu, Rect, Sprite, SpritePass, Texture, wgpu};
 
+const CM_PER_INCH: f64 = 2.54;
+
 pub struct Cat {
     sprites: SpritePass,
     cat: Sprite,
+    last_cursor: Option<CursorSample>,
+    distance_cm: f64,
+    printed_cm: u64,
 }
 
 impl Game for Cat {
@@ -42,15 +48,44 @@ impl Game for Cat {
             Rect {
                 x: 0.0,
                 y: 0.0,
-                width: 1.0,
+                width: 200.0 / 300.0,
                 height: 1.0,
             },
         );
 
         Cat {
             sprites,
-            cat
+            cat,
+            last_cursor: None,
+            distance_cm: 0.0,
+            printed_cm: 0,
         }
+    }
+
+    fn update(&mut self, dt: f32) {
+        let Some(cursor) = desktop::cursor() else {
+            return;
+        };
+
+        if let Some(last) = &self.last_cursor {
+            let dx_inches = (cursor.x - last.x) as f64 / cursor.dpi_x as f64;
+            let dy_inches = (cursor.y - last.y) as f64 / cursor.dpi_y as f64;
+            self.distance_cm  += (dx_inches * dx_inches + dy_inches * dy_inches).sqrt() * CM_PER_INCH;
+
+            if self.distance_cm as u64 > self.printed_cm {
+                self.printed_cm = self.distance_cm as u64;
+                if self.distance_cm > 100.0 * 1000.0 {
+                    println!("cursor: {:.3} km", self.distance_cm / (100.0 * 1000.0));
+                }
+                else if self.distance_cm > 100.0 {
+                    println!("cursor: {:.2} m", self.distance_cm / 100.0);
+                } else{
+                    println!("cursor: {:.0} cm", self.distance_cm);
+                }
+            }
+        }
+
+        self.last_cursor = Some(cursor);
     }
 
     fn render(&mut self, _gpu: &Gpu, frame: &mut Frame) {

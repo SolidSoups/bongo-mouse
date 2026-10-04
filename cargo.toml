@@ -11,3 +11,9 @@ wgpu = "30.0"
 winit = "0.30"
 image = { version = "0.24", default-features = false, features = ["png"] }
 bytemuck = { version = "1.24", features = ["derive"] }
+windows-sys = { version = "0.52", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_UI_HiDpi",
+    "Win32_UI_WindowsAndMessaging",
+] }
